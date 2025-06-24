@@ -3,16 +3,13 @@
 This file contains partial objects related to Roblox badges.
 
 """
-from __future__ import annotations
-from typing import TYPE_CHECKING
 
 from datetime import datetime
+
 from dateutil.parser import parse
 
 from ..bases.basebadge import BaseBadge
-
-if TYPE_CHECKING:
-    from ..client import Client
+from ..utilities.shared import ClientSharedObject
 
 
 class PartialBadge(BaseBadge):
@@ -21,21 +18,25 @@ class PartialBadge(BaseBadge):
 
     Attributes:
         _data: The data we get back from the endpoint.
-        _client: The cCient object, which is passed to all objects this Client generates.
+        _shared: The shared object, which is passed to all objects this client generates.
         id: The universe ID.
         awarded: The date when the badge was awarded.
     """
 
-    def __init__(self, client: Client, data: dict):
+    def __init__(self, shared: ClientSharedObject, data: dict):
         """
         Arguments:
-            client: The Client.
+            shared: The ClientSharedObject.
             data: The raw data.
         """
-        self._client: Client = client
+        self._shared: ClientSharedObject = shared
+        self._data: dict = data
 
         self.id: int = data["badgeId"]
 
-        super().__init__(client=client, badge_id=self.id)
+        super().__init__(shared=shared, badge_id=self.id)
 
         self.awarded: datetime = parse(data["awardedDate"])
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} id={self.id} awarded={self.awarded}>"

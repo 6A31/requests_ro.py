@@ -3,12 +3,10 @@
 This module contains classes intended to parse and deal with data from Roblox place information endpoints.
 
 """
-from __future__ import annotations
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from .client import Client
+
 from .bases.baseplace import BasePlace
 from .bases.baseuniverse import BaseUniverse
+from .utilities.shared import ClientSharedObject
 
 
 class Place(BasePlace):
@@ -16,6 +14,8 @@ class Place(BasePlace):
     Represents a Roblox place.
 
     Attributes:
+        _shared: The shared object, which is passed to all objects this client generates.
+        _data: The data from the request.
         id: id of the place.
         name: Name of the place.
         description: Description of the place.
@@ -28,18 +28,18 @@ class Place(BasePlace):
         universe_root_place: The root place that the universe contains.
         price: How much it costs to play the game.
         image_token: Can be used to generate thumbnails for this place.
-        has_verified_badge: If the place has a verified badge.
     """
 
-    def __init__(self, client: Client, data: dict):
+    def __init__(self, shared: ClientSharedObject, data: dict):
         """
         Arguments:
-            client: The Client object, which is passed to all objects this Client generates.
+            shared: The shared object, which is passed to all objects this client generates.
             data: data to make the magic happen.
         """
-        super().__init__(client=client, place_id=data["placeId"])
+        super().__init__(shared=shared, place_id=data["placeId"])
 
-        self._client: Client = client
+        self._shared: ClientSharedObject = shared
+        self._data: dict = data
 
         self.id: int = data["placeId"]
         self.name: str = data["name"]
@@ -51,9 +51,11 @@ class Place(BasePlace):
 
         self.is_playable: bool = data["isPlayable"]
         self.reason_prohibited: str = data["reasonProhibited"]
-        self.universe: BaseUniverse = BaseUniverse(client=self._client, universe_id=data["universeId"])
-        self.universe_root_place: BasePlace = BasePlace(client=self._client, place_id=data["universeRootPlaceId"])
+        self.universe: BaseUniverse = BaseUniverse(shared=self._shared, universe_id=data["universeId"])
+        self.universe_root_place: BasePlace = BasePlace(shared=self._shared, place_id=data["universeRootPlaceId"])
 
         self.price: int = data["price"]
         self.image_token: str = data["imageToken"]
-        self.has_verified_badge: bool = data["hasVerifiedBadge"]
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} id={self.id} name={self.name!r}>"

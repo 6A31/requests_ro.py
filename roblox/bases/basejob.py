@@ -4,13 +4,8 @@ This file contains the BaseJob object, which represents a Roblox job ID.
 
 """
 
-from __future__ import annotations
-from typing import TYPE_CHECKING
-
 from .baseitem import BaseItem
-
-if TYPE_CHECKING:
-    from ..client import Client
+from ..utilities.shared import ClientSharedObject
 
 
 class BaseJob(BaseItem):
@@ -21,15 +16,16 @@ class BaseJob(BaseItem):
     Learn more on the Developer Hub [here](https://developer.roblox.com/en-us/api-reference/property/DataModel/JobId).
 
     Attributes:
+        _shared: The ClientSharedObject.
         id: The job ID.
     """
 
-    def __init__(self, client: Client, job_id: str):
+    def __init__(self, shared: ClientSharedObject, job_id: str):
         """
         Arguments:
-            client: The Client this object belongs to.
+            shared: The ClientSharedObject.
             job_id: The job ID.
         """
 
-        self._client: Client = client
+        self._shared: ClientSharedObject = shared
         self.id: str = job_id

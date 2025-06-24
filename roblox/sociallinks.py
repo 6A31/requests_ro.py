@@ -3,15 +3,11 @@
 Contains objects related to Roblox social links.
 
 """
-from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .client import Client
 from enum import Enum
 
 from .bases.basesociallink import BaseUniverseSocialLink
+from .utilities.shared import ClientSharedObject
 
 
 class SocialLinkType(Enum):
@@ -27,21 +23,25 @@ class SocialLinkType(Enum):
     roblox_group = "RobloxGroup"
 
 
-class SocialLink(BaseUniverseSocialLink):
+class UniverseSocialLink(BaseUniverseSocialLink):
     """
-    Represents a universe or group's social links.
+    Represents a universe's social links.
 
     Attributes:
+        _shared: The shared object.
         id: The social link's ID.
         title: The social link's title.
         url: The social link's URL.
         type: The social link's type.
     """
 
-    def __init__(self, client: Client, data: dict):
-        self._client: Client = client
+    def __init__(self, shared: ClientSharedObject, data: dict):
+        self._shared: ClientSharedObject = shared
         self.id: int = data["id"]
-        super().__init__(client=self._client, social_link_id=self.id)
+        super().__init__(shared=self._shared, social_link_id=self.id)
         self.title: str = data["title"]
         self.url: str = data["url"]
         self.type: SocialLinkType = SocialLinkType(data["type"])
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} id={self.id} url={self.url!r} type={self.type!r} title={self.title!r}"

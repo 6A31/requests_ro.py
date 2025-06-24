@@ -4,13 +4,8 @@ This file contains the BaseRole object, which represents a Roblox group role ID.
 
 """
 
-from __future__ import annotations
-from typing import TYPE_CHECKING
-
 from .baseitem import BaseItem
-
-if TYPE_CHECKING:
-    from ..client import Client
+from ..utilities.shared import ClientSharedObject
 
 
 class BaseRole(BaseItem):
@@ -18,15 +13,16 @@ class BaseRole(BaseItem):
     Represents a Roblox group role ID.
 
     Attributes:
+        _shared: The ClientSharedObject.
         id: The role ID.
     """
 
-    def __init__(self, client: Client, role_id: int):
+    def __init__(self, shared: ClientSharedObject, role_id: int):
         """
         Arguments:
-            client: The Client this object belongs to.
+            shared: The ClientSharedObject.
             role_id: The role ID.
         """
 
-        self._client: Client = client
+        self._shared: ClientSharedObject = shared
         self.id: int = role_id

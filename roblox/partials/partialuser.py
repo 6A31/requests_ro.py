@@ -3,13 +3,9 @@
 This file contains partial objects related to Roblox users.
 
 """
-from __future__ import annotations
-from typing import TYPE_CHECKING, Optional, List
 
 from ..bases.baseuser import BaseUser
-
-if TYPE_CHECKING:
-    from ..client import Client
+from ..utilities.shared import ClientSharedObject
 
 
 class PartialUser(BaseUser):
@@ -17,62 +13,45 @@ class PartialUser(BaseUser):
     Represents partial user information.
 
     Attributes:
-        _client: The Client object, which is passed to all objects this Client generates.
+        _shared: The shared object, which is passed to all objects this client generates.
         id: The user's ID.
         name: The user's name.
         display_name: The user's display name.
-        has_verified_badge: If the user has a verified badge.
     """
 
-    def __init__(self, client: Client, data: dict):
+    def __init__(self, shared: ClientSharedObject, data: dict):
         """
         Arguments:
-            client: The Client.
+            shared: The ClientSharedObject.
             data: The data from the endpoint.
         """
-        self._client: Client = client
+        self._shared: ClientSharedObject = shared
 
         self.id: int = data.get("id") or data.get("userId") or data.get("Id")
 
-        super().__init__(client=client, user_id=self.id)
+        super().__init__(shared=shared, user_id=self.id)
 
         self.name: str = data.get("name") or data.get("Name") or data.get("username") or data.get("Username")
         self.display_name: str = data.get("displayName")
-        self.has_verified_badge: bool = data.get("hasVerifiedBadge", False) or data.get("HasVerifiedBadge", False)
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} id={self.id} name={self.name!r} display_name={self.display_name!r}>"
 
 
 class RequestedUsernamePartialUser(PartialUser):
     """
-    Represents a partial user in the context of a search where the requested username is present.
+    Represents a partial user in the context of a search query.
 
     Attributes:
-        requested_username: The requested username.
+        requested_username: Username they requested
     """
 
-    def __init__(self, client: Client, data: dict):
+    def __init__(self, shared: ClientSharedObject, data: dict):
         """
         Arguments:
-            client: The Client.
-            data: The data from the endpoint.
+            shared: The ClientSharedObject.
+            data: The data form the endpoint.
         """
-        super().__init__(client=client, data=data)
+        super().__init__(shared=shared, data=data)
 
-        self.requested_username: Optional[str] = data.get("requestedUsername")
-
-
-class PreviousUsernamesPartialUser(PartialUser):
-    """
-    Represents a partial user in the context of a search where the user's previous usernames are present.
-    Attributes:
-        previous_usernames: A list of the user's previous usernames.
-    """
-
-    def __init__(self, client: Client, data: dict):
-        """
-        Arguments:
-            client: The Client.
-            data: The data from the endpoint.
-        """
-        super().__init__(client=client, data=data)
-
-        self.previous_usernames: List[str] = data["previousUsernames"]
+        self.requested_username: str = data.get("requestedUsername")

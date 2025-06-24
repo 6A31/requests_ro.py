@@ -5,7 +5,9 @@ Contains exceptions used by ro.py.
 """
 
 from typing import Optional, List, Dict, Type
-from httpx import Response
+
+import requests
+from requests import Response
 
 
 # Generic exceptions
@@ -200,7 +202,7 @@ class BadgeNotFound(ItemNotFound):
 
 class GroupNotFound(ItemNotFound):
     """
-    Raised for invalid group IDs.
+    Raised for invalid badge IDs.
     """
     pass
 

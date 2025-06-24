@@ -3,19 +3,15 @@
 This module contains classes intended to parse and deal with data from Roblox badge information endpoints.
 
 """
-from __future__ import annotations
-from typing import TYPE_CHECKING
 
 from datetime import datetime
+
 from dateutil.parser import parse
 
 from .bases.baseasset import BaseAsset
 from .bases.basebadge import BaseBadge
 from .partials.partialuniverse import PartialUniverse
-
-
-if TYPE_CHECKING:
-    from .client import Client
+from .utilities.shared import ClientSharedObject
 
 
 class BadgeStatistics:
@@ -36,7 +32,7 @@ class BadgeStatistics:
         self.win_rate_percentage: int = data["winRatePercentage"]
 
     def __repr__(self):
-        return f"<{self.__class__.__name__} past_day_awarded_count={self.past_day_awarded_count} awarded_count={self.awarded_count} win_rate_percentage={self.win_rate_percentage}>"
+        return f"<{self.__class__.__name__} awarded_count={self.awarded_count}>"
 
 
 class Badge(BaseBadge):
@@ -58,25 +54,28 @@ class Badge(BaseBadge):
         awarding_universe: The universe the badge is being awarded from.
     """
 
-    def __init__(self, client: Client, data: dict):
+    def __init__(self, shared: ClientSharedObject, data: dict):
         """
         Arguments:
-            client: The Client to be used when getting information on badges.
+            shared: The ClientSharedObject to be used when getting information on badges.
             data: The data from the endpoint.
         """
         self.id: int = data["id"]
 
-        super().__init__(client=client, badge_id=self.id)
+        super().__init__(shared=shared, badge_id=self.id)
 
         self.name: str = data["name"]
         self.description: str = data["description"]
         self.display_name: str = data["displayName"]
         self.display_description: str = data["displayDescription"]
         self.enabled: bool = data["enabled"]
-        self.icon: BaseAsset = BaseAsset(client=client, asset_id=data["iconImageId"])
-        self.display_icon: BaseAsset = BaseAsset(client=client, asset_id=data["displayIconImageId"])
+        self.icon: BaseAsset = BaseAsset(shared=shared, asset_id=data["iconImageId"])
+        self.display_icon: BaseAsset = BaseAsset(shared=shared, asset_id=data["displayIconImageId"])
         self.created: datetime = parse(data["created"])
         self.updated: datetime = parse(data["updated"])
 
         self.statistics: BadgeStatistics = BadgeStatistics(data=data["statistics"])
-        self.awarding_universe: PartialUniverse = PartialUniverse(client=client, data=data["awardingUniverse"])
+        self.awarding_universe: PartialUniverse = PartialUniverse(shared=shared, data=data["awardingUniverse"])
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} id={self.id} name={self.name!r}>"

@@ -3,13 +3,9 @@
 This module contains classes intended to parse and deal with data from Roblox badge endpoints.
 
 """
-from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .client import Client
 from .bases.baserobloxbadge import BaseRobloxBadge
+from .utilities.shared import ClientSharedObject
 
 
 class RobloxBadge(BaseRobloxBadge):
@@ -23,11 +19,14 @@ class RobloxBadge(BaseRobloxBadge):
         image_url: A link to the badge's image.
     """
 
-    def __init__(self, client: Client, data: dict):
-        self._client: Client = client
+    def __init__(self, shared: ClientSharedObject, data: dict):
+        self._shared: ClientSharedObject = shared
         self.id: int = data["id"]
-        super().__init__(client=self._client, roblox_badge_id=self.id)
+        super().__init__(shared=self._shared, roblox_badge_id=self.id)
 
         self.name: str = data["name"]
         self.description: str = data["description"]
         self.image_url: str = data["imageUrl"]
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} name={self.name!r}>"

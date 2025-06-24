@@ -4,13 +4,8 @@ This file contains the BaseGamePass object, which represents a Roblox gamepass I
 
 """
 
-from __future__ import annotations
-from typing import TYPE_CHECKING
-
 from .baseitem import BaseItem
-
-if TYPE_CHECKING:
-    from ..client import Client
+from ..utilities.shared import ClientSharedObject
 
 
 class BaseGamePass(BaseItem):
@@ -18,15 +13,16 @@ class BaseGamePass(BaseItem):
     Represents a Roblox gamepass ID.
 
     Attributes:
+        _shared: The ClientSharedObject.
         id: The gamepass ID.
     """
 
-    def __init__(self, client: Client, gamepass_id: int):
+    def __init__(self, shared: ClientSharedObject, gamepass_id: int):
         """
         Arguments:
-            client: The Client this object belongs to.
+            shared: The ClientSharedObject.
             gamepass_id: The gamepass ID.
         """
 
-        self._client: Client = client
+        self._shared: ClientSharedObject = shared
         self.id: int = gamepass_id

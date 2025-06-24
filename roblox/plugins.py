@@ -3,15 +3,13 @@
 This module contains classes intended to parse and deal with data from Roblox plugin information endpoints.
 
 """
-from __future__ import annotations
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from .client import Client
+
 from datetime import datetime
 
 from dateutil.parser import parse
 
 from .bases.baseplugin import BasePlugin
+from .utilities.shared import ClientSharedObject
 
 
 class Plugin(BasePlugin):
@@ -29,13 +27,13 @@ class Plugin(BasePlugin):
         updated: When the plugin was updated.
     """
 
-    def __init__(self, client: Client, data: dict):
+    def __init__(self, shared: ClientSharedObject, data: dict):
         """
         Attributes:
-            client: The Client object, which is passed to all objects this Client generates.
+            shared: The shared object, which is passed to all objects this client generates.
             data: data to make the magic happen.
         """
-        super().__init__(client=client, plugin_id=data["id"])
+        super().__init__(shared=shared, plugin_id=data["id"])
 
         self.id: int = data["id"]
         self.name: str = data["name"]
@@ -44,3 +42,6 @@ class Plugin(BasePlugin):
         self.version_id: int = data["versionId"]
         self.created: datetime = parse(data["created"])
         self.updated: datetime = parse(data["updated"])
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} id={self.id} name={self.name!r}>"

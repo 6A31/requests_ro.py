@@ -4,19 +4,16 @@ This module contains classes intended to parse and deal with data from Roblox as
 
 """
 
-from __future__ import annotations
-from typing import Union, Optional, TYPE_CHECKING
-
 from datetime import datetime
+from typing import Union, Optional
+
 from dateutil.parser import parse
 
 from .bases.baseasset import BaseAsset
 from .creatortype import CreatorType
 from .partials.partialgroup import AssetPartialGroup
 from .partials.partialuser import PartialUser
-
-if TYPE_CHECKING:
-    from .client import Client
+from .utilities.shared import ClientSharedObject
 
 asset_type_names = {
     1: "Image",
@@ -142,13 +139,13 @@ class EconomyAsset(BaseAsset):
         sale_availability_locations: Unknown
     """
 
-    def __init__(self, client: Client, data: dict):
+    def __init__(self, shared: ClientSharedObject, data: dict):
         """
         Arguments:
-            client: The Client to be used when getting information on assets.
+            shared: The ClientSharedObject to be used when getting information on assets.
             data: The data from the request.
         """
-        super().__init__(client=client, asset_id=data["AssetId"])
+        super().__init__(shared=shared, asset_id=data["AssetId"])
 
         self.product_type: Optional[str] = data["ProductType"]
         self.id: int = data["AssetId"]
@@ -161,11 +158,11 @@ class EconomyAsset(BaseAsset):
         self.creator: Union[PartialUser, AssetPartialGroup]
 
         if self.creator_type == CreatorType.user:
-            self.creator: PartialUser = PartialUser(client=client, data=data["Creator"])
+            self.creator: PartialUser = PartialUser(shared=shared, data=data["Creator"])
         elif self.creator_type == CreatorType.group:
-            self.creator: AssetPartialGroup = AssetPartialGroup(client=client, data=data["Creator"])
+            self.creator: AssetPartialGroup = AssetPartialGroup(shared=shared, data=data["Creator"])
 
-        self.icon_image: BaseAsset = BaseAsset(client=client, asset_id=data["IconImageAssetId"])
+        self.icon_image: BaseAsset = BaseAsset(shared=shared, asset_id=data["IconImageAssetId"])
 
         self.created: datetime = parse(data["Created"])
         self.updated: datetime = parse(data["Updated"])
@@ -184,3 +181,6 @@ class EconomyAsset(BaseAsset):
         self.minimum_membership_level: int = data["MinimumMembershipLevel"]
         self.content_rating_type_id: int = data["ContentRatingTypeId"]
         self.sale_availability_locations = data["SaleAvailabilityLocations"]
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} id={self.id} name={self.name!r} type={self.type}>"

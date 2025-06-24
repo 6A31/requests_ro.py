@@ -5,21 +5,17 @@ Contains objects related to Roblox chat conversations.
 
 
 """
-from __future__ import annotations
-from typing import TYPE_CHECKING
 
 from datetime import datetime
-from dateutil.parser import parse
-
 from enum import Enum
 from typing import List, Optional
+
+from dateutil.parser import parse
 
 from .bases.baseconversation import BaseConversation
 from .partials.partialuniverse import ChatPartialUniverse
 from .partials.partialuser import PartialUser
-
-if TYPE_CHECKING:
-    from .client import Client
+from .utilities.shared import ClientSharedObject
 
 
 class ConversationType(Enum):
@@ -54,7 +50,7 @@ class ConversationTitle:
         self.is_default_title: bool = data["isDefaultTitle"]
 
     def __repr__(self):
-        return f"<{self.__class__.__name__} title_for_viewer={self.title_for_viewer!r} is_default_title={self.is_default_title}>"
+        return f"<{self.__class__.__name__} title_for_viewer={self.title_for_viewer!r}>"
 
 
 class Conversation(BaseConversation):
@@ -73,13 +69,13 @@ class Conversation(BaseConversation):
         conversation_universe: Specifies the universe associated with the conversation.
     """
 
-    def __init__(self, client: Client, data: dict):
+    def __init__(self, shared: ClientSharedObject, data: dict):
         """
         Arguments:
-            client: The Client object.
+            shared: The shared object.
             data: The conversation data.
         """
-        super().__init__(client=client, conversation_id=self.id)
+        super().__init__(shared=shared, conversation_id=self.id)
         self.id: int = data["id"]
         self.title: str = data["title"]
 
@@ -87,11 +83,11 @@ class Conversation(BaseConversation):
         # so this is a partialuser
         # Nikita Petko: Well uhhh, the initiator is of the ChatParticipant model,
         # where it can either be from User or System.
-        self.initiator: PartialUser = PartialUser(client, data["initiator"])
+        self.initiator: PartialUser = PartialUser(shared, data["initiator"])
 
         self.has_unread_messages: bool = data["hasUnreadMessages"]
         self.participants: List[PartialUser] = [PartialUser(
-            client=client,
+            shared=shared,
             data=participant_data
         ) for participant_data in data["participants"]]
 
@@ -102,6 +98,9 @@ class Conversation(BaseConversation):
         self.last_updated: datetime = parse(data["lastUpdated"])
         self.conversation_universe: Optional[ChatPartialUniverse] = data[
                                                                         "conversationUniverse"] and ChatPartialUniverse(
-            client=client,
+            shared=shared,
             data=data["conversationUniverse"]
         )
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} id={self.id} title={self.title!r}>"

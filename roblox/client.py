@@ -4,7 +4,7 @@ Contains the Client, which is the core object at the center of all ro.py applica
 
 """
 
-from typing import Union, List, Optional
+from typing import Union, List
 
 from .account import AccountProvider
 from .assets import EconomyAsset
@@ -20,7 +20,7 @@ from .bases.baseuser import BaseUser
 from .chat import ChatProvider
 from .delivery import DeliveryProvider
 from .groups import Group
-from .partials.partialuser import PartialUser, RequestedUsernamePartialUser, PreviousUsernamesPartialUser
+from .partials.partialuser import PartialUser, RequestedUsernamePartialUser
 from .places import Place
 from .plugins import Plugin
 from .presence import PresenceProvider
@@ -31,6 +31,7 @@ from .utilities.exceptions import BadRequest, NotFound, AssetNotFound, BadgeNotF
     PluginNotFound, UniverseNotFound, UserNotFound
 from .utilities.iterators import PageIterator
 from .utilities.requests import Requests
+from .utilities.shared import ClientSharedObject
 from .utilities.url import URLGenerator
 
 
@@ -55,16 +56,31 @@ class Client:
             base_url: The base URL to use when sending requests.
         """
         self._url_generator: URLGenerator = URLGenerator(base_url=base_url)
-        self._requests: Requests = Requests()
+        self._requests: Requests = Requests(
+            url_generator=self._url_generator
+        )
 
-        self.url_generator: URLGenerator = self._url_generator
+        self._shared: ClientSharedObject = ClientSharedObject(
+            client=self,
+            requests=self._requests,
+            url_generator=self._url_generator
+        )
+
+        self.presence: PresenceProvider = PresenceProvider(shared=self._shared)
+        self.thumbnails: ThumbnailProvider = ThumbnailProvider(shared=self._shared)
+        self.delivery: DeliveryProvider = DeliveryProvider(shared=self._shared)
+        self.chat: ChatProvider = ChatProvider(shared=self._shared)
+        self.account: AccountProvider = AccountProvider(shared=self._shared)
+
+        # TODO: Improve this hack
+        self._shared.presence_provider = self.presence
+        self._shared.thumbnail_provider = self.thumbnails
+        self._shared.delivery_provider = self.delivery
+        self._shared.chat_provider = self.chat
+        self._shared.account_provider = self.account
+
         self.requests: Requests = self._requests
-
-        self.presence: PresenceProvider = PresenceProvider(client=self)
-        self.thumbnails: ThumbnailProvider = ThumbnailProvider(client=self)
-        self.delivery: DeliveryProvider = DeliveryProvider(client=self)
-        self.chat: ChatProvider = ChatProvider(client=self)
-        self.account: AccountProvider = AccountProvider(client=self)
+        self.url_generator: URLGenerator = self._url_generator
 
         if token:
             self.set_token(token)
@@ -73,7 +89,7 @@ class Client:
         return f"<{self.__class__.__name__}>"
 
     # Authentication
-    def set_token(self, token: Optional[str] = None) -> None:
+    def set_token(self, token: str) -> None:
         """
         Authenticates the client with the passed .ROBLOSECURITY token.
         This method does not send any requests and will not throw if the token is invalid.
@@ -97,7 +113,7 @@ class Client:
         """
         try:
             user_response = await self._requests.get(
-                url=self.url_generator.get_url("users", f"v1/users/{user_id}")
+                url=self._shared.url_generator.get_url("users", f"v1/users/{user_id}")
             )
         except NotFound as exception:
             raise UserNotFound(
@@ -105,7 +121,7 @@ class Client:
                 response=exception.response
             ) from None
         user_data = user_response.json()
-        return User(client=self, data=user_data)
+        return User(shared=self._shared, data=user_data)
 
     async def get_authenticated_user(
             self, expand: bool = True
@@ -120,14 +136,14 @@ class Client:
             The authenticated user.
         """
         authenticated_user_response = await self._requests.get(
-            url=self._url_generator.get_url("users", f"v1/users/authenticated")
+            url=self._shared.url_generator.get_url("users", f"v1/users/authenticated")
         )
         authenticated_user_data = authenticated_user_response.json()
 
         if expand:
             return await self.get_user(authenticated_user_data["id"])
         else:
-            return PartialUser(client=self, data=authenticated_user_data)
+            return PartialUser(shared=self._shared, data=authenticated_user_data)
 
     async def get_users(
             self,
@@ -147,7 +163,7 @@ class Client:
             A List of Users or partial users.
         """
         users_response = await self._requests.post(
-            url=self._url_generator.get_url("users", f"v1/users"),
+            url=self._shared.url_generator.get_url("users", f"v1/users"),
             json={"userIds": user_ids, "excludeBannedUsers": exclude_banned_users},
         )
         users_data = users_response.json()["data"]
@@ -156,7 +172,7 @@ class Client:
             return [await self.get_user(user_data["id"]) for user_data in users_data]
         else:
             return [
-                PartialUser(client=self, data=user_data)
+                PartialUser(shared=self._shared, data=user_data)
                 for user_data in users_data
             ]
 
@@ -178,7 +194,7 @@ class Client:
             A list of User or RequestedUsernamePartialUser, depending on the expand argument.
         """
         users_response = await self._requests.post(
-            url=self._url_generator.get_url("users", f"v1/usernames/users"),
+            url=self._shared.url_generator.get_url("users", f"v1/usernames/users"),
             json={"usernames": usernames, "excludeBannedUsers": exclude_banned_users},
         )
         users_data = users_response.json()["data"]
@@ -187,7 +203,7 @@ class Client:
             return [await self.get_user(user_data["id"]) for user_data in users_data]
         else:
             return [
-                RequestedUsernamePartialUser(client=self, data=user_data)
+                RequestedUsernamePartialUser(shared=self._shared, data=user_data)
                 for user_data in users_data
             ]
 
@@ -221,7 +237,7 @@ class Client:
 
         !!! note
             This method does not send any requests - it just generates an object.
-            For more information on bases, please see [Bases](../tutorials/bases.md).
+            For more information on bases, please see [Bases](/bases).
 
         Arguments:
             user_id: A Roblox user ID.
@@ -229,7 +245,7 @@ class Client:
         Returns:
             A BaseUser.
         """
-        return BaseUser(client=self, user_id=user_id)
+        return BaseUser(shared=self._shared, user_id=user_id)
 
     def user_search(self, keyword: str, page_size: int = 10,
                     max_items: int = None) -> PageIterator:
@@ -245,12 +261,12 @@ class Client:
             A PageIterator containing RequestedUsernamePartialUser.
         """
         return PageIterator(
-            client=self,
-            url=self._url_generator.get_url("users", f"v1/users/search"),
+            shared=self._shared,
+            url=self._shared.url_generator.get_url("users", f"v1/users/search"),
             page_size=page_size,
             max_items=max_items,
             extra_parameters={"keyword": keyword},
-            handler=lambda client, data: PreviousUsernamesPartialUser(client=client, data=data),
+            handler=lambda shared, data: RequestedUsernamePartialUser(shared, data),
         )
 
     # Groups
@@ -266,7 +282,7 @@ class Client:
         """
         try:
             group_response = await self._requests.get(
-                url=self._url_generator.get_url("groups", f"v1/groups/{group_id}")
+                url=self._shared.url_generator.get_url("groups", f"v1/groups/{group_id}")
             )
         except BadRequest as exception:
             raise GroupNotFound(
@@ -274,7 +290,7 @@ class Client:
                 response=exception.response
             ) from None
         group_data = group_response.json()
-        return Group(client=self, data=group_data)
+        return Group(shared=self._shared, data=group_data)
 
     def get_base_group(self, group_id: int) -> BaseGroup:
         """
@@ -282,7 +298,7 @@ class Client:
 
         !!! note
             This method does not send any requests - it just generates an object.
-            For more information on bases, please see [Bases](../tutorials/bases.md).
+            For more information on bases, please see [Bases](/bases).
 
         Arguments:
             group_id: A Roblox group ID.
@@ -290,7 +306,7 @@ class Client:
         Returns:
             A BaseGroup.
         """
-        return BaseGroup(client=self, group_id=group_id)
+        return BaseGroup(shared=self._shared, group_id=group_id)
 
     # Universes
     async def get_universes(self, universe_ids: List[int]) -> List[Universe]:
@@ -304,12 +320,12 @@ class Client:
             A list of Universes.
         """
         universes_response = await self._requests.get(
-            url=self._url_generator.get_url("games", "v1/games"),
+            url=self._shared.url_generator.get_url("games", "v1/games"),
             params={"universeIds": universe_ids},
         )
         universes_data = universes_response.json()["data"]
         return [
-            Universe(client=self, data=universe_data)
+            Universe(shared=self._shared, data=universe_data)
             for universe_data in universes_data
         ]
 
@@ -335,7 +351,7 @@ class Client:
 
         !!! note
             This method does not send any requests - it just generates an object.
-            For more information on bases, please see [Bases](../tutorials/bases.md).
+            For more information on bases, please see [Bases](/bases).
 
         Arguments:
             universe_id: A Roblox universe ID.
@@ -343,7 +359,7 @@ class Client:
         Returns:
             A BaseUniverse.
         """
-        return BaseUniverse(client=self, universe_id=universe_id)
+        return BaseUniverse(shared=self._shared, universe_id=universe_id)
 
     # Places
     async def get_places(self, place_ids: List[int]) -> List[Place]:
@@ -357,14 +373,14 @@ class Client:
             A list of Places.
         """
         places_response = await self._requests.get(
-            url=self._url_generator.get_url(
+            url=self._shared.url_generator.get_url(
                 "games", f"v1/games/multiget-place-details"
             ),
             params={"placeIds": place_ids},
         )
         places_data = places_response.json()
         return [
-            Place(client=self, data=place_data) for place_data in places_data
+            Place(shared=self._shared, data=place_data) for place_data in places_data
         ]
 
     async def get_place(self, place_id: int) -> Place:
@@ -389,7 +405,7 @@ class Client:
 
         !!! note
             This method does not send any requests - it just generates an object.
-            For more information on bases, please see [Bases](../tutorials/bases.md).
+            For more information on bases, please see [Bases](/bases).
 
         Arguments:
             place_id: A Roblox place ID.
@@ -397,7 +413,7 @@ class Client:
         Returns:
             A BasePlace.
         """
-        return BasePlace(client=self, place_id=place_id)
+        return BasePlace(shared=self._shared, place_id=place_id)
 
     # Assets
     async def get_asset(self, asset_id: int) -> EconomyAsset:
@@ -412,7 +428,7 @@ class Client:
         """
         try:
             asset_response = await self._requests.get(
-                url=self._url_generator.get_url(
+                url=self._shared.url_generator.get_url(
                     "economy", f"v2/assets/{asset_id}/details"
                 )
             )
@@ -422,7 +438,7 @@ class Client:
                 response=exception.response
             ) from None
         asset_data = asset_response.json()
-        return EconomyAsset(client=self, data=asset_data)
+        return EconomyAsset(shared=self._shared, data=asset_data)
 
     def get_base_asset(self, asset_id: int) -> BaseAsset:
         """
@@ -430,7 +446,7 @@ class Client:
 
         !!! note
             This method does not send any requests - it just generates an object.
-            For more information on bases, please see [Bases](../tutorials/bases.md).
+            For more information on bases, please see [Bases](/bases).
 
         Arguments:
             asset_id: A Roblox asset ID.
@@ -438,7 +454,7 @@ class Client:
         Returns:
             A BaseAsset.
         """
-        return BaseAsset(client=self, asset_id=asset_id)
+        return BaseAsset(shared=self._shared, asset_id=asset_id)
 
     # Plugins
     async def get_plugins(self, plugin_ids: List[int]) -> List[Plugin]:
@@ -452,7 +468,7 @@ class Client:
             A list of Plugins.
         """
         plugins_response = await self._requests.get(
-            url=self._url_generator.get_url(
+            url=self._shared.url_generator.get_url(
                 "develop", "v1/plugins"
             ),
             params={
@@ -460,7 +476,7 @@ class Client:
             }
         )
         plugins_data = plugins_response.json()["data"]
-        return [Plugin(client=self, data=plugin_data) for plugin_data in plugins_data]
+        return [Plugin(shared=self._shared, data=plugin_data) for plugin_data in plugins_data]
 
     async def get_plugin(self, plugin_id: int) -> Plugin:
         """
@@ -484,7 +500,7 @@ class Client:
 
         !!! note
             This method does not send any requests - it just generates an object.
-            For more information on bases, please see [Bases](../tutorials/bases.md).
+            For more information on bases, please see [Bases](/bases).
 
         Arguments:
             plugin_id: A Roblox plugin ID.
@@ -492,7 +508,7 @@ class Client:
         Returns:
             A BasePlugin.
         """
-        return BasePlugin(client=self, plugin_id=plugin_id)
+        return BasePlugin(shared=self._shared, plugin_id=plugin_id)
 
     # Badges
     async def get_badge(self, badge_id: int) -> Badge:
@@ -507,7 +523,7 @@ class Client:
         """
         try:
             badge_response = await self._requests.get(
-                url=self._url_generator.get_url(
+                url=self._shared.url_generator.get_url(
                     "badges", f"v1/badges/{badge_id}"
                 )
             )
@@ -517,7 +533,7 @@ class Client:
                 response=exception.response
             ) from None
         badge_data = badge_response.json()
-        return Badge(client=self, data=badge_data)
+        return Badge(shared=self._shared, data=badge_data)
 
     def get_base_badge(self, badge_id: int) -> BaseBadge:
         """
@@ -525,7 +541,7 @@ class Client:
 
         !!! note
             This method does not send any requests - it just generates an object.
-            For more information on bases, please see [Bases](../tutorials/bases.md).
+            For more information on bases, please see [Bases](/bases).
 
         Arguments:
             badge_id: A Roblox badge ID.
@@ -533,7 +549,7 @@ class Client:
         Returns:
             A BaseBadge.
         """
-        return BaseBadge(client=self, badge_id=badge_id)
+        return BaseBadge(shared=self._shared, badge_id=badge_id)
 
     # Gamepasses
     def get_base_gamepass(self, gamepass_id: int) -> BaseGamePass:
@@ -542,11 +558,11 @@ class Client:
 
         !!! note
             This method does not send any requests - it just generates an object.
-            For more information on bases, please see [Bases](../tutorials/bases.md).
+            For more information on bases, please see [Bases](/bases).
 
         Arguments:
             gamepass_id: A Roblox gamepass ID.
 
         Returns: A BaseGamePass.
         """
-        return BaseGamePass(client=self, gamepass_id=gamepass_id)
+        return BaseGamePass(shared=self._shared, gamepass_id=gamepass_id)

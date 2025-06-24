@@ -3,13 +3,9 @@
 Contains classes and functions related to Roblox asset delivery.
 
 """
-from __future__ import annotations
-from typing import TYPE_CHECKING
 
+from .utilities.shared import ClientSharedObject
 from .utilities.url import cdn_site
-
-if TYPE_CHECKING:
-    from .client import Client
 
 
 def get_cdn_number(cdn_hash: str) -> int:
@@ -36,14 +32,14 @@ class BaseCDNHash:
         cdn_hash: The CDN hash as a string.
     """
 
-    def __init__(self, client: Client, cdn_hash: str):
+    def __init__(self, shared: ClientSharedObject, cdn_hash: str):
         """
         Arguments:
-            client: The Client object.
+            shared: The shared object.
             cdn_hash: The CDN hash as a string.
         """
 
-        self._client: Client = client
+        self._shared: ClientSharedObject = shared
         self.cdn_hash: str = cdn_hash
 
     def __repr__(self):
@@ -61,7 +57,7 @@ class BaseCDNHash:
 
     def _get_url(self, prefix: str, site: str = cdn_site) -> str:
         cdn_number: int = self.get_cdn_number()
-        return self._client.url_generator.get_url(f"{prefix}{cdn_number}", self.cdn_hash, site)
+        return self._shared.url_generator.get_url(f"{prefix}{cdn_number}", self.cdn_hash, site)
 
     def get_url(self, site: str = cdn_site) -> str:
         """
@@ -82,8 +78,8 @@ class ThumbnailCDNHash(BaseCDNHash):
     Represents a CDN hash on tX.rbxcdn.com.
     """
 
-    def __init__(self, client: Client, cdn_hash: str):
-        super().__init__(client=client, cdn_hash=cdn_hash)
+    def __init__(self, shared: ClientSharedObject, cdn_hash: str):
+        super().__init__(shared=shared, cdn_hash=cdn_hash)
 
     def get_url(self, site: str = cdn_site) -> str:
         """
@@ -98,8 +94,8 @@ class ContentCDNHash(BaseCDNHash):
     Represents a CDN hash on cX.rbxcdn.com.
     """
 
-    def __init__(self, client: Client, cdn_hash: str):
-        super().__init__(client=client, cdn_hash=cdn_hash)
+    def __init__(self, shared: ClientSharedObject, cdn_hash: str):
+        super().__init__(shared=shared, cdn_hash=cdn_hash)
 
     def get_url(self, site: str = cdn_site) -> str:
         """
@@ -115,12 +111,12 @@ class DeliveryProvider:
     Provides CDN hashes and other delivery-related objects.
     """
 
-    def __init__(self, client: Client):
+    def __init__(self, shared: ClientSharedObject):
         """
         Arguments:
-            client: The client object, which is passed to all objects this client generates.
+            shared: The shared object, which is passed to all objects this client generates.
         """
-        self._client: Client = client
+        self._shared: ClientSharedObject = shared
 
     def get_cdn_hash(self, cdn_hash: str) -> BaseCDNHash:
         """
@@ -134,7 +130,7 @@ class DeliveryProvider:
         """
 
         return BaseCDNHash(
-            client=self._client,
+            shared=self._shared,
             cdn_hash=cdn_hash
         )
 
@@ -166,7 +162,7 @@ class DeliveryProvider:
         """
 
         return ThumbnailCDNHash(
-            client=self._client,
+            shared=self._shared,
             cdn_hash=cdn_hash
         )
 
@@ -182,6 +178,6 @@ class DeliveryProvider:
         """
 
         return ContentCDNHash(
-            client=self._client,
+            shared=self._shared,
             cdn_hash=cdn_hash
         )

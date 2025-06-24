@@ -11,9 +11,9 @@ from typing import TYPE_CHECKING, Optional
 from .bases.baserole import BaseRole
 from .partials.partialuser import PartialUser
 from .utilities.iterators import PageIterator, SortOrder
+from .utilities.shared import ClientSharedObject
 
 if TYPE_CHECKING:
-    from .client import Client
     from .bases.basegroup import BaseGroup
 
 
@@ -30,23 +30,26 @@ class Role(BaseRole):
         member_count: How many members exist with this role.
     """
 
-    def __init__(self, client: Client, data: dict, group: BaseGroup = None):
+    def __init__(self, shared: ClientSharedObject, data: dict, group: BaseGroup = None):
         """
         Arguments:
-            client: The Client object.
+            shared: The client shared object.
             data: The raw role data.
             group: The parent group.
         """
-        self._client: Client = client
+        self._shared: ClientSharedObject = shared
 
         self.id: int = data["id"]
-        super().__init__(client=self._client, role_id=self.id)
+        super().__init__(shared=self._shared, role_id=self.id)
 
         self.group: Optional[BaseGroup] = group
         self.name: str = data["name"]
         self.description: Optional[str] = data.get("description")
         self.rank: int = data["rank"]
         self.member_count: Optional[int] = data.get("memberCount")
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} name={self.name!r} rank={self.rank} member_count={self.member_count}>"
 
     def get_members(self, page_size: int = 10, sort_order: SortOrder = SortOrder.Ascending,
                     max_items: int = None) -> PageIterator:
@@ -62,10 +65,10 @@ class Role(BaseRole):
             A PageIterator containing all members with this role.
         """
         return PageIterator(
-            client=self._client,
-            url=self._client.url_generator.get_url("groups", f"v1/groups/{self.group.id}/roles/{self.id}/users"),
+            shared=self._shared,
+            url=self._shared.url_generator.get_url("groups", f"v1/groups/{self.group.id}/roles/{self.id}/users"),
             page_size=page_size,
             sort_order=sort_order,
             max_items=max_items,
-            handler=lambda client, data: PartialUser(client=client, data=data)
+            handler=lambda shared, data: PartialUser(shared=shared, data=data)
         )

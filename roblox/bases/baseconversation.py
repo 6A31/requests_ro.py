@@ -4,13 +4,8 @@ This file contains the BaseConversation object, which represents a Roblox conver
 
 """
 
-from __future__ import annotations
-from typing import TYPE_CHECKING
-
 from .baseitem import BaseItem
-
-if TYPE_CHECKING:
-    from ..client import Client
+from ..utilities.shared import ClientSharedObject
 
 
 class BaseConversation(BaseItem):
@@ -18,15 +13,16 @@ class BaseConversation(BaseItem):
     Represents a Roblox chat conversation ID.
 
     Attributes:
+        _shared: The ClientSharedObject.
         id: The conversation ID.
     """
 
-    def __init__(self, client: Client, conversation_id: int):
+    def __init__(self, shared: ClientSharedObject, conversation_id: int):
         """
         Arguments:
-            client: The Client this object belongs to.
+            shared: The ClientSharedObject.
             conversation_id: The conversation ID.
         """
 
-        self._client: Client = client
+        self._shared: ClientSharedObject = shared
         self.id: int = conversation_id

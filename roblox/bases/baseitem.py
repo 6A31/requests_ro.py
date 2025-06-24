@@ -13,8 +13,7 @@ class BaseItem:
     id = None
 
     def __repr__(self):
-        attributes_repr = "".join(f" {key}={value!r}" for key, value in self.__dict__.items() if not key.startswith("_"))
-        return f"<{self.__class__.__name__}{attributes_repr}>"
+        return f"<{self.__class__.__name__} id={self.id}>"
 
     def __int__(self):
         return self.id

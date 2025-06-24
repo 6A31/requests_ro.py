@@ -1,6 +1,6 @@
 """
 
-Contains client enums.
+Contains shared enums.
 fixme: this should be deprecated!
 
 """

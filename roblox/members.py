@@ -10,9 +10,9 @@ from typing import Union, TYPE_CHECKING
 
 from .bases.baseuser import BaseUser
 from .partials.partialrole import PartialRole
+from .utilities.shared import ClientSharedObject
 
 if TYPE_CHECKING:
-    from .client import Client
     from .bases.basegroup import BaseGroup
     from .utilities.types import RoleOrRoleId
 
@@ -20,19 +20,16 @@ if TYPE_CHECKING:
 class MemberRelationship(BaseUser):
     """
     Represents a relationship between a user and a group.
-    
-    Attributes:
-        group: The corresponding group.
     """
 
-    def __init__(self, client: Client, user: Union[BaseUser, int], group: Union[BaseGroup, int]):
-        self._client: Client = client
-        super().__init__(client=self._client, user_id=int(user))
+    def __init__(self, shared: ClientSharedObject, user: Union[BaseUser, int], group: Union[BaseGroup, int]):
+        self._shared: ClientSharedObject = shared
+        super().__init__(shared=self._shared, user_id=int(user))
 
         self.group: BaseGroup
 
         if isinstance(group, int):
-            self.group = BaseGroup(client=self._client, group_id=group)
+            self.group = BaseGroup(shared=self._shared, group_id=group)
         else:
             self.group = group
 
@@ -59,12 +56,6 @@ class MemberRelationship(BaseUser):
         Kicks this member from the group.
         """
         await self.group.kick_user(self)
-        
-    async def delete_all_messages(self):
-        """
-        Deletes all wall posts created by this member in the group.
-        """
-        await self.group.delete_all_messages(self)
 
 
 class Member(MemberRelationship):
@@ -72,23 +63,22 @@ class Member(MemberRelationship):
     Represents a group member.
 
     Attributes:
-        id: The member's ID.
-        name: The member's name.
-        display_name: The member's display name.
+        _shared: The shared object.
         role: The member's role.
         group: The member's group.
-        has_verified_badge: If the member has a verified badge.
     """
 
-    def __init__(self, client: Client, data: dict, group: BaseGroup):
-        self._client: Client = client
+    def __init__(self, shared: ClientSharedObject, data: dict, group: BaseGroup):
+        self._shared: ClientSharedObject = shared
 
         self.id: int = data["user"]["userId"]
         self.name: str = data["user"]["username"]
         self.display_name: str = data["user"]["displayName"]
-        self.has_verified_badge: bool = data["user"]["hasVerifiedBadge"]
 
-        super().__init__(client=self._client, user=self.id, group=group)
+        super().__init__(shared=self._shared, user=self.id, group=group)
 
-        self.role: PartialRole = PartialRole(client=self._client, data=data["role"])
+        self.role: PartialRole = PartialRole(shared=self._shared, data=data["role"])
         self.group: BaseGroup = group
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} id={self.id} name={self.name!r} role={self.role}>"

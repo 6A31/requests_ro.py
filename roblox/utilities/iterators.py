@@ -3,17 +3,14 @@
 This module contains iterators used internally by ro.py to provide paginated information.
 
 """
+
 from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from ..client import Client
 
 from enum import Enum
 from typing import Callable, Optional, AsyncIterator
 
 from .exceptions import NoMoreItems
+from .shared import ClientSharedObject
 
 
 class SortOrder(Enum):
@@ -153,11 +150,11 @@ class RobloxIterator:
 class PageIterator(RobloxIterator):
     """
     Represents a cursor-based, paginated Roblox object. Learn more about iterators in the pagination tutorial:
-    [Pagination](../../tutorials/pagination.md)
+    [Pagination](/tutorial/pagination)
     For more information about how cursor-based pagination works, see https://robloxapi.wiki/wiki/Pagination.
 
     Attributes:
-        _client: The Client.
+        _shared: The ClientSharedObject.
         url: The endpoint to hit for new page data.
         sort_order: The sort order to use for returned data.
         page_size: How much data should be returned per-page.
@@ -172,7 +169,7 @@ class PageIterator(RobloxIterator):
 
     def __init__(
             self,
-            client: Client,
+            shared: ClientSharedObject,
             url: str,
             sort_order: SortOrder = SortOrder.Ascending,
             page_size: int = 10,
@@ -183,7 +180,7 @@ class PageIterator(RobloxIterator):
     ):
         """
         Parameters:
-            client: The Client.
+            shared: The ClientSharedObject.
             url: The endpoint to hit for new page data.
             sort_order: The sort order to use for returned data.
             page_size: How much data should be returned per-page.
@@ -194,7 +191,7 @@ class PageIterator(RobloxIterator):
         """
         super().__init__(max_items=max_items)
 
-        self._client: Client = client
+        self._shared: ClientSharedObject = shared
 
         # store some basic arguments in the object
         self.url: str = url
@@ -228,7 +225,7 @@ class PageIterator(RobloxIterator):
         if not self.next_started:
             self.next_started = True
 
-        page_response = await self._client.requests.get(
+        page_response = await self._shared.requests.get(
             url=self.url,
             params={
                 "cursor": self.next_cursor,
@@ -248,7 +245,7 @@ class PageIterator(RobloxIterator):
         if self.handler:
             data = [
                 self.handler(
-                    client=self._client,
+                    shared=self._shared,
                     data=item_data,
                     **self.handler_kwargs
                 ) for item_data in data
@@ -272,7 +269,7 @@ class PageNumberIterator(RobloxIterator):
 
     def __init__(
             self,
-            client: Client,
+            shared: ClientSharedObject,
             url: str,
             page_size: int = 10,
             extra_parameters: Optional[dict] = None,
@@ -281,7 +278,7 @@ class PageNumberIterator(RobloxIterator):
     ):
         super().__init__()
 
-        self._client: Client = client
+        self._shared: ClientSharedObject = shared
 
         self.url: str = url
         self.page_number: int = 1
@@ -298,7 +295,7 @@ class PageNumberIterator(RobloxIterator):
         """
         Advances the iterator to the next page.
         """
-        page_response = await self._client.requests.get(
+        page_response = await self._shared.requests.get(
             url=self.url,
             params={
                 "pageNumber": self.page_number,
@@ -316,7 +313,7 @@ class PageNumberIterator(RobloxIterator):
         if self.handler:
             data = [
                 self.handler(
-                    client=self._client,
+                    shared=self._shared,
                     data=item_data,
                     **self.handler_kwargs
                 ) for item_data in data

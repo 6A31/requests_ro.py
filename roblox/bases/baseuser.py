@@ -5,6 +5,7 @@ This file contains the BaseUser object, which represents a Roblox user ID.
 """
 
 from __future__ import annotations
+
 from typing import Optional, List, TYPE_CHECKING
 
 from .baseitem import BaseItem
@@ -15,12 +16,12 @@ from ..presence import Presence
 from ..promotionchannels import UserPromotionChannels
 from ..robloxbadges import RobloxBadge
 from ..utilities.iterators import PageIterator, SortOrder
+from ..utilities.shared import ClientSharedObject
 
 if TYPE_CHECKING:
-    from ..client import Client
     from ..friends import Friend
     from ..roles import Role
-    from ..utilities.types import AssetOrAssetId, GamePassOrGamePassId, GroupOrGroupId
+    from ..utilities.types import AssetOrAssetId, GamePassOrGamePassId
 
 
 class BaseUser(BaseItem):
@@ -28,18 +29,34 @@ class BaseUser(BaseItem):
     Represents a Roblox user ID.
 
     Attributes:
+        _shared: The ClientSharedObject.
         id: The user ID.
     """
 
-    def __init__(self, client: Client, user_id: int):
+    def __init__(self, shared: ClientSharedObject, user_id: int):
         """
         Arguments:
-            client: The Client this object belongs to.
+            shared: The ClientSharedObject.
             user_id: The user ID.
         """
 
-        self._client: Client = client
+        self._shared: ClientSharedObject = shared
         self.id: int = user_id
+
+    async def get_status(self) -> str:
+        """
+        Grabs the user's status.
+
+        Returns:
+            The user's status.
+        """
+        status_response = await self._shared.requests.get(
+            url=self._shared.url_generator.get_url(
+                "users", f"/v1/users/{self.id}/status"
+            )
+        )
+        status_data = status_response.json()
+        return status_data["status"]
 
     def username_history(
             self, page_size: int = 10, sort_order: SortOrder = SortOrder.Ascending, max_items: int = None
@@ -56,14 +73,14 @@ class BaseUser(BaseItem):
             A PageIterator containing the user's username history.
         """
         return PageIterator(
-            client=self._client,
-            url=self._client.url_generator.get_url(
+            shared=self._shared,
+            url=self._shared.url_generator.get_url(
                 "users", f"v1/users/{self.id}/username-history"
             ),
             page_size=page_size,
             sort_order=sort_order,
             max_items=max_items,
-            handler=lambda client, data: data["name"],
+            handler=lambda shared, data: data["name"],
         )
 
     async def get_presence(self) -> Optional[Presence]:
@@ -73,7 +90,7 @@ class BaseUser(BaseItem):
         Returns:
             The user's presence, if they have an active presence.
         """
-        presences = await self._client.presence.get_user_presences([self.id])
+        presences = await self._shared.presence_provider.get_user_presences([self.id])
         try:
             return presences[0]
         except IndexError:
@@ -88,11 +105,11 @@ class BaseUser(BaseItem):
         """
 
         from ..friends import Friend
-        friends_response = await self._client.requests.get(
-            url=self._client.url_generator.get_url("friends", f"v1/users/{self.id}/friends")
+        friends_response = await self._shared.requests.get(
+            url=self._shared.url_generator.get_url("friends", f"v1/users/{self.id}/friends")
         )
         friends_data = friends_response.json()["data"]
-        return [Friend(client=self._client, data=friend_data) for friend_data in friends_data]
+        return [Friend(shared=self._shared, data=friend_data) for friend_data in friends_data]
 
     async def get_currency(self) -> int:
         """
@@ -101,8 +118,8 @@ class BaseUser(BaseItem):
         Returns:
             The user's Robux amount.
         """
-        currency_response = await self._client.requests.get(
-            url=self._client.url_generator.get_url("economy", f"v1/users/{self.id}/currency")
+        currency_response = await self._shared.requests.get(
+            url=self._shared.url_generator.get_url("economy", f"v1/users/{self.id}/currency")
         )
         currency_data = currency_response.json()
         return currency_data["robux"]
@@ -114,8 +131,8 @@ class BaseUser(BaseItem):
         Returns:
             Whether the user has Premium or not.
         """
-        premium_response = await self._client.requests.get(
-            url=self._client.url_generator.get_url("premiumfeatures", f"v1/users/{self.id}/validate-membership")
+        premium_response = await self._shared.requests.get(
+            url=self._shared.url_generator.get_url("premiumfeatures", f"v1/users/{self.id}/validate-membership")
         )
         premium_data = premium_response.text
         return premium_data == "true"
@@ -136,13 +153,13 @@ class BaseUser(BaseItem):
         # this is so we can have special classes for other types
         item_class = instance_classes.get(item_type) or ItemInstance
 
-        instance_response = await self._client.requests.get(
-            url=self._client.url_generator.get_url("inventory", f"v1/users/{self.id}/items/{item_type}/{item_id}")
+        instance_response = await self._shared.requests.get(
+            url=self._shared.url_generator.get_url("inventory", f"v1/users/{self.id}/items/{item_type}/{item_id}")
         )
         instance_data = instance_response.json()["data"]
         if len(instance_data) > 0:
             return item_class(
-                client=self._client,
+                shared=self._shared,
                 data=instance_data[0]
             )
         else:
@@ -179,8 +196,8 @@ class BaseUser(BaseItem):
         Returns:
             A list of partial badges containing badge awarded dates.
         """
-        awarded_response = await self._client.requests.get(
-            url=self._client.url_generator.get_url("badges", f"v1/users/{self.id}/badges/awarded-dates"),
+        awarded_response = await self._shared.requests.get(
+            url=self._shared.url_generator.get_url("badges", f"v1/users/{self.id}/badges/awarded-dates"),
             params={
                 "badgeIds": [badge.id for badge in badges]
             }
@@ -188,7 +205,7 @@ class BaseUser(BaseItem):
         awarded_data: list = awarded_response.json()["data"]
         return [
             PartialBadge(
-                client=self._client,
+                shared=self._shared,
                 data=partial_data
             ) for partial_data in awarded_data
         ]
@@ -202,20 +219,44 @@ class BaseUser(BaseItem):
         """
         from ..roles import Role
         from ..groups import Group
-        roles_response = await self._client.requests.get(
-            url=self._client.url_generator.get_url("groups", f"v1/users/{self.id}/groups/roles")
+        roles_response = await self._shared.requests.get(
+            url=self._shared.url_generator.get_url("groups", f"v1/users/{self.id}/groups/roles")
         )
         roles_data = roles_response.json()["data"]
         return [
             Role(
-                client=self._client,
+                shared=self._shared,
                 data=role_data["role"],
                 group=Group(
-                    client=self._client,
+                    shared=self._shared,
                     data=role_data["group"]
                 )
             ) for role_data in roles_data
         ]
+
+    async def get_primary_group_role(self) -> Optional[Role]:
+        """
+        Gets a role for the primary group this user is in.
+
+        Returns:
+            Role
+        """
+        from ..roles import Role
+        from ..groups import Group
+        roles_response = await self._shared.requests.get(
+            url=self._shared.url_generator.get_url("groups", f"v1/users/{self.id}/groups/primary/role")
+        )
+        json = roles_response.json()
+        if json is None:
+            return None
+        return Role(
+                shared=self._shared,
+                data=json["role"],
+                group=Group(
+                    shared=self._shared,
+                    data=json["group"]
+                )
+            )
 
     async def get_roblox_badges(self) -> List[RobloxBadge]:
         """
@@ -225,11 +266,11 @@ class BaseUser(BaseItem):
             A list of Roblox badges.
         """
 
-        badges_response = await self._client.requests.get(
-            url=self._client.url_generator.get_url("accountinformation", f"v1/users/{self.id}/roblox-badges")
+        badges_response = await self._shared.requests.get(
+            url=self._shared.url_generator.get_url("accountinformation", f"v1/users/{self.id}/roblox-badges")
         )
         badges_data = badges_response.json()
-        return [RobloxBadge(client=self._client, data=badge_data) for badge_data in badges_data]
+        return [RobloxBadge(shared=self._shared, data=badge_data) for badge_data in badges_data]
 
     async def get_promotion_channels(self) -> UserPromotionChannels:
         """
@@ -238,8 +279,8 @@ class BaseUser(BaseItem):
         Returns:
             The user's promotion channels.
         """
-        channels_response = await self._client.requests.get(
-            url=self._client.url_generator.get_url("accountinformation", f"v1/users/{self.id}/promotion-channels")
+        channels_response = await self._shared.requests.get(
+            url=self._shared.url_generator.get_url("accountinformation", f"v1/users/{self.id}/promotion-channels")
         )
         channels_data = channels_response.json()
         return UserPromotionChannels(
@@ -247,8 +288,8 @@ class BaseUser(BaseItem):
         )
 
     async def _get_friend_channel_count(self, channel: str) -> int:
-        count_response = await self._client.requests.get(
-            url=self._client.url_generator.get_url("friends", f"v1/users/{self.id}/{channel}/count")
+        count_response = await self._shared.requests.get(
+            url=self._shared.url_generator.get_url("friends", f"v1/users/{self.id}/{channel}/count")
         )
         return count_response.json()["count"]
 
@@ -260,12 +301,12 @@ class BaseUser(BaseItem):
     ) -> PageIterator:
         from ..friends import Friend
         return PageIterator(
-            client=self._client,
-            url=self._client.url_generator.get_url("friends", f"v1/users/{self.id}/{channel}"),
+            shared=self._shared,
+            url=self._shared.url_generator.get_url("friends", f"v1/users/{self.id}/{channel}"),
             page_size=page_size,
             sort_order=sort_order,
             max_items=max_items,
-            handler=lambda client, data: Friend(client=client, data=data)
+            handler=lambda shared, data: Friend(shared=shared, data=data)
         )
 
     async def get_friend_count(self) -> int:

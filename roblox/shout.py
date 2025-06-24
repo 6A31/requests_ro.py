@@ -3,17 +3,13 @@
 Contains the Shout object, which represents a group's shout.
 
 """
-from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .client import Client
 from datetime import datetime
 
 from dateutil.parser import parse
 
 from .partials.partialuser import PartialUser
+from .utilities.shared import ClientSharedObject
 
 
 class Shout:
@@ -21,6 +17,7 @@ class Shout:
     Represents a Group Shout.
 
     Attributes:
+        _shared: The shared object, which is passed to all objects this client generates.
         body: The text of the shout.
         created: When the shout was created.
         updated: When the shout was updated.
@@ -29,21 +26,21 @@ class Shout:
 
     def __init__(
             self,
-            client: Client,
+            shared: ClientSharedObject,
             data: dict
     ):
         """
         Arguments:
-            client: Client object.
+            shared: Shared object.
             data: The data from the request.
         """
-        self._client: Client = client
+        self._shared: ClientSharedObject = shared
 
         self.body: str = data["body"]
         self.created: datetime = parse(data["created"])
         self.updated: datetime = parse(data["updated"])
         self.poster: PartialUser = PartialUser(
-            client=self._client,
+            shared=self._shared,
             data=data["poster"]
         )
 
