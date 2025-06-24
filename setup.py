@@ -6,9 +6,9 @@ with open("README.md", "r", encoding="utf-8") as fh:
 setup_info = {
     "name": "roblox",
     "version": "1.0.0",
-    "author": "jmkdev ERR and 6A31 ig",
+    "author": "jmkdev 6A31",
     "author_email": "jmk@jmksite.dev",
-    "description": "async requests roblox is a patch by 6A31",
+    "description": "A patched fork of ro.py using asyncio requests instead of httpx.",
     "long_description": long_description,
     "long_description_content_type": "text/markdown",
     "url": "https://github.com/ro-py/ro.py",
@@ -35,5 +35,5 @@ setup_info = {
     ]
 }
 
-
+setuptools.setup(**setup_info)
 setuptools.setup(**setup_info)
