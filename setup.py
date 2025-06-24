@@ -5,10 +5,10 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup_info = {
     "name": "roblox",
-    "version": "2.0.0",
-    "author": "jmkdev",
+    "version": "1.0.0",
+    "author": "jmkdev ERR and 6A31 ig",
     "author_email": "jmk@jmksite.dev",
-    "description": "ro.py is a modern object-oriented asynchronous Python wrapper for the Roblox web API.",
+    "description": "async requests roblox is a patch by 6A31",
     "long_description": long_description,
     "long_description_content_type": "text/markdown",
     "url": "https://github.com/ro-py/ro.py",
