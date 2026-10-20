@@ -36,4 +36,3 @@ setup_info = {
 }
 
 setuptools.setup(**setup_info)
-setuptools.setup(**setup_info)
